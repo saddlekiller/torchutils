@@ -23,6 +23,7 @@ class Trainer:
         self._save_every_step = self._hparams.save_every_step
         self._valid_every_step = self._hparams.valid_every_step
         self._max_steps = self._hparams.max_steps
+        self._max_epochs = self._hparams.max_epochs
 
         self._checkpoint_helper = CheckpointHelper(
             self._checkpoint_hparams, 
@@ -50,6 +51,9 @@ class Trainer:
             logging.error(f'[ trainer ] Trainer will not start until call setup_dataloader!')
             raise ValueError
         self._checkpoint_helper.load()
+        if self._model.global_step >= self._max_steps or self._model.global_epoch >= self._max_epochs:
+            logging.info(f'[ trainer ] Training is finished at Epoch {self._model.global_epoch}, Step {self._model.global_step}!')
+            return
         finished = False
         self._tqdm_bar = tqdm(np.arange(self._model.global_step, self._max_steps + 1))
         while True:
@@ -86,6 +90,10 @@ class Trainer:
             if finished:
                 break
             self._model.epoch_done()
+            if self._model.global_epoch >= self._max_epochs:
+                break
+
+        self._checkpoint_helper.save()
         logging.info(f'[ trainer ] Training is finished at Epoch {self._model.global_epoch}, Step {self._model.global_step}!')
             
     def _print_losses(self, losses_dict, time_cost, is_training):

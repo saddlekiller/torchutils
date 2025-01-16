@@ -1,6 +1,7 @@
 import os
 import time
 import torch
+import pickle
 import numpy as np
 from tqdm import tqdm
 from loggers.logger import logging
@@ -46,6 +47,8 @@ class Inferer:
         for k, v in summary_images.items(): 
             renamed_summary_images[f'{k}-{sample_id}'] = v
         self._monitor_helper.save({'image': renamed_summary_images}, mode='files')
+        for k, v in outputs_dict.items():
+            pickle.dump(v.cpu().detach().numpy(), open(os.path.join(self._outputs_save_dir, k + '.pkl'), 'wb'))    
         return outputs_dict
 
         
