@@ -60,13 +60,14 @@ class Trainer:
             for train_data in self._train_dataloader:
                 st = time.time()
                 train_outputs_dict, train_losses_dict, train_summaries_dict = self._forward_pass(train_data, is_training=True)
-                et = time.time()    
+                et = time.time()
+                train_losses_dict['lr'] = self._model.get_lr()
                 self._print_losses(train_losses_dict, et - st, is_training=True)
                 
                 if self._model.global_step > 0 and self._model.global_step % self._save_every_step == 0:
                     self._checkpoint_helper.save()
                     self._train_monitor_helper.save(train_summaries_dict)
-                    self._train_monitor_helper.save({'scalar': train_losses_dict})
+                    self._train_monitor_helper.save({'scalar': {f'losses/{k}':v for k,v in train_losses_dict.items()}})
                     
                 if self._model.global_step > 0 and self._model.global_step % self._valid_every_step == 0:
                     valid_accum_losses_dict = {}
@@ -77,6 +78,7 @@ class Trainer:
                             if k not in valid_accum_losses_dict.keys():
                                 valid_accum_losses_dict[k] = []
                             valid_accum_losses_dict[k].append(v)
+                        break
                     for k, v in valid_accum_losses_dict.items():
                         valid_accum_losses_dict[k] = torch.stack(v).mean()
                     et = time.time()
