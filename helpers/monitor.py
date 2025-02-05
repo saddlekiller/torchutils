@@ -2,6 +2,7 @@ import os
 import psutil
 import torch
 import torchvision
+import numpy as np
 from tensorboardX import SummaryWriter
 from loggers.logger import logging
 from .helpers import Helper
@@ -82,17 +83,18 @@ class MonitorHelper(Helper):
                         pass
     
     def _process_scalar(self, tensor_name, tensor):
-        shape = tensor.shape
-        if len(shape) != 0:
-            logging.error(f'[ helper-monitor ] Invalid shape "{shape}" for "{tensor_name}" which is "scalar"!')
-            raise ValueError
+        if type(tensor) not in [float, int]:
+            shape = tensor.shape
+            if len(shape) != 0:
+                logging.error(f'[ helper-monitor ] Invalid shape "{shape}" for "{tensor_name}" which is "scalar"!')
+                raise ValueError
         return tensor
-
+    
     def _process_image(self, tensor_name, tensor):
         shape = tensor.shape
         if len(shape) == 4:
             # B x C x H x W
-            tensor = tensor[0, :3]
+            tensor = torchvision.utils.make_grid(tensor, int(np.ceil(tensor.shape[0] ** 0.5)), normalize=True, value_range=(0, 1))
         elif len(shape) ==  3:
             # B x C x T
             tensor = tensor[0, None]
@@ -101,13 +103,13 @@ class MonitorHelper(Helper):
         else:
             logging.error(f'[ helper-monitor ] Invalid shape "{shape}" for "{tensor_name}" which is "image"!')
             raise ValueError
-        return tensor
+        return tensor[:3]
 
     def _process_histogram(self, tensor_name, tensor):
         shape = tensor.shape
-        if len(shape) < 2:
-            logging.error(f'[ helper-monitor ] Invalid shape "{shape}" for "{tensor_name}" which is "histogram"!')
-            raise ValueError
+        # if len(shape) < 2:
+        #     logging.error(f'[ helper-monitor ] Invalid shape "{shape}" for "{tensor_name}" which is "histogram"!')
+        #     raise ValueError
         return tensor
     
     def _process_audio(self, tensor_name, tensor):
