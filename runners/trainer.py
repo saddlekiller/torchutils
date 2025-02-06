@@ -96,23 +96,24 @@ class Trainer:
                             self._checkpoint_helper.save()
                             self._train_monitor_helper.save(train_summaries_dict)
                             self._train_monitor_helper.save({'scalar': {f'losses/{k}':v for k,v in train_losses_dict.items()}})
-                            
-                    if self._model_module.global_step > 0 and self._model_module.global_step % self._valid_every_step == 0:
-                        valid_accum_losses_dict = {}
-                        st = time.time()
-                        for valid_data in self._valid_dataloader:
-                            valid_outputs_dict, valid_losses_dict, valid_summaries_dict = self._forward_pass(valid_data, is_training=False)
-                            for k, v in valid_losses_dict.items():
-                                if k not in valid_accum_losses_dict.keys():
-                                    valid_accum_losses_dict[k] = []
-                                valid_accum_losses_dict[k].append(v)
-                            break
-                        for k, v in valid_accum_losses_dict.items():
-                            valid_accum_losses_dict[k] = torch.stack(v).mean()
-                        et = time.time()
-                        self._valid_monitor_helper.save(valid_summaries_dict)
-                        self._valid_monitor_helper.save({'scalar': valid_losses_dict})
-                        self._print_losses(valid_accum_losses_dict, et - st, is_training=False)
+                        
+                    with torch.no_grad():
+                        if self._model_module.global_step > 0 and self._model_module.global_step % self._valid_every_step == 0:
+                            valid_accum_losses_dict = {}
+                            st = time.time()
+                            for valid_data in self._valid_dataloader:
+                                valid_outputs_dict, valid_losses_dict, valid_summaries_dict = self._forward_pass(valid_data, is_training=False)
+                                for k, v in valid_losses_dict.items():
+                                    if k not in valid_accum_losses_dict.keys():
+                                        valid_accum_losses_dict[k] = []
+                                    valid_accum_losses_dict[k].append(v)
+                                break
+                            for k, v in valid_accum_losses_dict.items():
+                                valid_accum_losses_dict[k] = torch.stack(v).mean()
+                            et = time.time()
+                            self._valid_monitor_helper.save(valid_summaries_dict)
+                            self._valid_monitor_helper.save({'scalar': valid_losses_dict})
+                            self._print_losses(valid_accum_losses_dict, et - st, is_training=False)
 
                 if self._model_module.global_step >= self._max_steps:
                     finished = True
@@ -156,10 +157,10 @@ class Trainer:
         outputs_dict, losses_dict, summaries_dict = self._model(data)
         if is_training:
             self._model_module.update(losses_dict)
-            for name, param in self._model_module.named_parameters():
-                if param.grad is not None:
-                    summaries_dict['histogram'][f'grads/{name}'] = param.grad
-                    summaries_dict['histogram'][f'vars/{name}'] = param
+            # for name, param in self._model_module.named_parameters():
+            #     if param.grad is not None:
+            #         summaries_dict['histogram'][f'grads/{name}'] = param.grad
+            #         summaries_dict['histogram'][f'vars/{name}'] = param
                 # try:
                 #     logging.error(name, param.grad.max(), param.grad.min())
                 # except:

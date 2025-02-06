@@ -37,6 +37,8 @@ class MonitorHelper(Helper):
         match (mode):
             case "events":
                 self._save_to_events(self._model.global_epoch, self._model.global_step, tensor_dict)
+                sys_info = {f'sysinfo/{k}': v for k, v in self.get_sys_info().items()}
+                self._save_to_events(self._model.global_epoch, self._model.global_step, {'scalar': sys_info})
             case "files":
                 self._save_to_files(self._model.global_epoch, self._model.global_step, tensor_dict)
             case _:
