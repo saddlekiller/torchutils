@@ -4,7 +4,7 @@ import torch
 import torchvision
 import numpy as np
 from tensorboardX import SummaryWriter
-from loggers.logger import logging
+from torchutils.loggers.logger import logging
 from .helpers import Helper
 
 class MonitorHelper(Helper):

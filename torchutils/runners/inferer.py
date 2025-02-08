@@ -4,8 +4,8 @@ import torch
 import pickle
 import numpy as np
 from tqdm import tqdm
-from loggers.logger import logging
-from helpers import CheckpointHelper, MonitorHelper
+from torchutils.loggers.logger import logging
+from torchutils.helpers import CheckpointHelper, MonitorHelper
 
 class Inferer:
     
@@ -32,6 +32,7 @@ class Inferer:
         
         self._checkpoint_helper.load()
         self._model.eval()
+        self._model.set_mode(training=False, validating=False)
         
         os.makedirs(self._outputs_save_dir, exist_ok=True)
         os.makedirs(self._summaries_save_dir, exist_ok=True)

@@ -3,8 +3,8 @@ import time
 import torch
 import numpy as np
 from tqdm import tqdm
-from loggers.logger import logging
-from helpers import CheckpointHelper, MonitorHelper
+from torchutils.loggers.logger import logging
+from torchutils.helpers import CheckpointHelper, MonitorHelper
 
 class Trainer:
     
@@ -25,10 +25,7 @@ class Trainer:
         self._valid_every_step = self._handler_hparams.valid_every_step
         self._max_steps = self._handler_hparams.max_steps
         self._max_epochs = self._handler_hparams.max_epochs
-        self._optimizer = getattr(torch.optim, self._hparams.Optimizer.class_name)(
-            self._model.parameters(), self._hparams.Optimizer.init_lr)
-        self._scheduler = getattr(torch.optim.lr_scheduler, self._hparams.Optimizer.scheduler)(
-            self._optimizer, **self._hparams.Scheduler)
+        self._model.setup_optimizer()
         self._multigpu = multigpu
         if self._multigpu:
             self._model_module = self._model.module
@@ -86,7 +83,6 @@ class Trainer:
                 st = time.time()
                 train_outputs_dict, train_losses_dict, train_summaries_dict = self._forward_pass(train_data, is_training=True)
                 et = time.time()
-                train_losses_dict['lr'] = self._scheduler.get_last_lr()[0]
                 
                 if self.isMasterNode():
                     
@@ -152,8 +148,10 @@ class Trainer:
     def _forward_pass(self, data, is_training):
         if is_training:
             self._model.train()
+            self._model.set_mode(is_training, validating=True)
         else:
             self._model.eval()
+            self._model.set_mode(is_training, validating=False)
         outputs_dict, losses_dict, summaries_dict = self._model(data)
         if is_training:
             self._model_module.update(losses_dict)
@@ -166,9 +164,9 @@ class Trainer:
                 # except:
                 #     pass
             # print()
-            self._optimizer.step()
-            self._scheduler.step()
-            self._optimizer.zero_grad()
+            # self._optimizer.step()
+            # self._scheduler.step()
+            # self._optimizer.zero_grad()
             if self._tqdm_bar is not None:
                 self._tqdm_bar.update()
         return outputs_dict, losses_dict, summaries_dict

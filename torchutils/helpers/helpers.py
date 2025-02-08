@@ -1,5 +1,5 @@
 import os
-from loggers.logger import logging
+from torchutils.loggers.logger import logging
 
 class Helper:
     

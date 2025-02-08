@@ -1,6 +1,6 @@
 import torch
 from matplotlib import cm
-from loggers.logger import logging
+from torchutils.loggers.logger import logging
 
 def apply_colormap(image, cmap="viridis"):
     if image.shape[1] != 1:
