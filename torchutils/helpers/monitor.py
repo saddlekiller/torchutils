@@ -33,14 +33,14 @@ class MonitorHelper(Helper):
         self._check_hparams('sample_rate')
         self._check_hparams('fps')
     
-    def save(self, tensor_dict=None, mode='events'):
+    def save(self, tensor_dict=None, mode='events', subdir_name=None):
         match (mode):
             case "events":
                 self._save_to_events(self._model.global_epoch, self._model.global_step, tensor_dict)
                 sys_info = {f'sysinfo/{k}': v for k, v in self.get_sys_info().items()}
                 self._save_to_events(self._model.global_epoch, self._model.global_step, {'scalar': sys_info})
             case "files":
-                self._save_to_files(self._model.global_epoch, self._model.global_step, tensor_dict)
+                self._save_to_files(self._model.global_epoch, self._model.global_step, tensor_dict, subdir_name=subdir_name)
             case _:
                 logging.error(f'[ helper-monitor ] Invalid mode "{mode}", should be in ["events", "files"]')
                 raise ValueError
@@ -70,8 +70,10 @@ class MonitorHelper(Helper):
                         raise NotImplementedError
         self._writer.flush()
 
-    def _save_to_files(self, global_epoch=None, global_step=None, tensor_dict=None):
+    def _save_to_files(self, global_epoch=None, global_step=None, tensor_dict=None, subdir_name=None):
         save_subdir = os.path.join(self._vis_save_dir, f'E{global_epoch}-S{global_step}')
+        if subdir_name is not None:
+            save_subdir = os.path.join(save_subdir, subdir_name)
         os.makedirs(save_subdir, exist_ok=True)
         for tensor_type, tensor_info in tensor_dict.items():
             for tensor_name, tensor_with_func in tensor_info.items():
@@ -80,7 +82,10 @@ class MonitorHelper(Helper):
                     case "image":
                         if tensor.shape[1] not in [1, 3]:
                             logging.error(f'[ helper-monitor ] Invalid channel number "{tensor.shape[1]}", should be 1 or 3')
-                        torchvision.utils.save_image(tensor, os.path.join(save_subdir, tensor_name + '.jpg'))
+                        tensor = self._process_image(tensor_name, tensor)
+                        save_fn = os.path.join(save_subdir, os.path.basename(tensor_name) + '.jpg')
+                        torchvision.utils.save_image(tensor, save_fn)
+                        logging.info(f'[ helper-monitor ] Saved tensor into {save_fn}')
                     case _:
                         pass
     

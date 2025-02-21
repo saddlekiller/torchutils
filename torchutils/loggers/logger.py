@@ -1,4 +1,4 @@
-import logging
+import logging as ori_logging
 from colorama import Fore
 
 def _reformat_msg(msg):
@@ -9,20 +9,20 @@ def _reformat_msg(msg):
     
 class LogWrapper:
     
-    _logger = logging.getLogger("logger")
-    _format = logging.Formatter(f'%(asctime)s %(message)s')
-    _handler = logging.StreamHandler()
+    _logger = ori_logging.getLogger("logger")
+    _format = ori_logging.Formatter(f'%(asctime)s %(message)s')
+    _handler = ori_logging.StreamHandler()
     _handler.setFormatter(_format)
     _logger.addHandler(_handler)
-    _logger.setLevel(logging.INFO)
+    _logger.setLevel(ori_logging.INFO)
 
     @staticmethod
     def setLevel(level):
-        __class__._logger.setLevel(getattr(logging, level))
+        __class__._logger.setLevel(getattr(ori_logging, level))
 
     @staticmethod
-    def addFileHander(fn):
-        hanlder = logging.FileHandler(fn)
+    def addFileHandler(fn):
+        hanlder = ori_logging.FileHandler(fn)
         __class__._logger.addHandler(hanlder)
     
     @staticmethod

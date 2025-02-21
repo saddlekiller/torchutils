@@ -38,17 +38,17 @@ class Inferer:
         os.makedirs(self._summaries_save_dir, exist_ok=True)
         
     def __call__(self, data, mode):
-        if 'sample_id' not in data.keys():
-            logging.error(f'[ inferer ] Invalid data format, Missing "sample_id"!')
+        if 'name' not in data.keys():
+            logging.error(f'[ inferer ] Invalid data format, Missing "name"!')
             raise KeyError
         with torch.no_grad():
-            sample_id = '_'.join([str(i) for i in data['sample_id'].cpu().numpy()])
+            name = data['name']
             outputs_dict, _, summaries_dict = self._model(data, mode)
             summary_images = summaries_dict['image']
             renamed_summary_images = {}
             for k, v in summary_images.items(): 
-                renamed_summary_images[f'{k}-{sample_id}'] = v
-            self._monitor_helper.save({'image': renamed_summary_images}, mode='files')
+                renamed_summary_images[f'{k}-{name}'] = v
+            self._monitor_helper.save({'image': renamed_summary_images}, mode='files', subdir_name=mode)
             for k, v in outputs_dict.items():
                 pickle.dump(v.cpu().detach().numpy(), open(os.path.join(self._outputs_save_dir, k + '.pkl'), 'wb'))    
             return outputs_dict

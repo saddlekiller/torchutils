@@ -8,7 +8,7 @@ from torchutils.helpers import CheckpointHelper, MonitorHelper
 
 class Trainer:
     
-    def __init__(self, hparams, model, workspace_dir, multigpu=False):
+    def __init__(self, hparams, model, workspace_dir, multigpu=False, update_step=10):
         self._hparams = hparams
         self._handler_hparams = self._hparams.Handlers
         if not hasattr(self._handler_hparams, 'CheckpointHelper'):
@@ -22,11 +22,13 @@ class Trainer:
         self._checkpoint_hparams = self._handler_hparams.CheckpointHelper
         self._monitor_hparams = self._handler_hparams.MonitorHelper
         self._save_every_step = self._handler_hparams.save_every_step
+        self._scalar_save_every_step = self._handler_hparams.scalar_save_every_step
         self._valid_every_step = self._handler_hparams.valid_every_step
         self._max_steps = self._handler_hparams.max_steps
         self._max_epochs = self._handler_hparams.max_epochs
         self._model.setup_optimizer()
         self._multigpu = multigpu
+        self._update_step = update_step
         if self._multigpu:
             self._model_module = self._model.module
         else:
@@ -86,12 +88,18 @@ class Trainer:
                 
                 if self.isMasterNode():
                     
-                    self._print_losses(train_losses_dict, et - st, is_training=True)
+                    if self._tqdm_bar is not None and self._model_module.global_step % self._update_step == 0:
+                        self._print_losses(train_losses_dict, et - st, is_training=True)
+                        self._tqdm_bar.update(self._update_step)
                     
-                    if self._model_module.global_step > 0 and self._model_module.global_step % self._save_every_step == 0:
-                            self._checkpoint_helper.save()
-                            self._train_monitor_helper.save(train_summaries_dict)
-                            self._train_monitor_helper.save({'scalar': {f'losses/{k}':v for k,v in train_losses_dict.items()}})
+                    if self._model_module.global_step > 0 and \
+                            self._model_module.global_step % self._save_every_step == 0:
+                        self._checkpoint_helper.save()
+                        self._train_monitor_helper.save(train_summaries_dict)
+                        
+                    if self._model_module.global_step > 0 and \
+                            self._model_module.global_step % self._scalar_save_every_step == 0:
+                        self._train_monitor_helper.save({'scalar': {f'losses/{k}':v for k,v in train_losses_dict.items()}})
                         
                     with torch.no_grad():
                         if self._model_module.global_step > 0 and self._model_module.global_step % self._valid_every_step == 0:
@@ -148,26 +156,12 @@ class Trainer:
     def _forward_pass(self, data, is_training):
         if is_training:
             self._model.train()
-            self._model.set_mode(is_training, validating=True)
+            self._model.set_mode(is_training, validating=False)
         else:
             self._model.eval()
-            self._model.set_mode(is_training, validating=False)
+            self._model.set_mode(is_training, validating=True)
         outputs_dict, losses_dict, summaries_dict = self._model(data)
         if is_training:
             self._model_module.update(losses_dict)
-            # for name, param in self._model_module.named_parameters():
-            #     if param.grad is not None:
-            #         summaries_dict['histogram'][f'grads/{name}'] = param.grad
-            #         summaries_dict['histogram'][f'vars/{name}'] = param
-                # try:
-                #     logging.error(name, param.grad.max(), param.grad.min())
-                # except:
-                #     pass
-            # print()
-            # self._optimizer.step()
-            # self._scheduler.step()
-            # self._optimizer.zero_grad()
-            if self._tqdm_bar is not None:
-                self._tqdm_bar.update()
         return outputs_dict, losses_dict, summaries_dict
     
