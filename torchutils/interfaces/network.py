@@ -8,6 +8,7 @@ class AbstractNetwork(nn.Module):
         super().__init__()
         self.global_step = 0
         self.global_epoch = 0
+        self._network = None
         self._optimizer = None
         self._scheduler = None
         self._hparams = hparams
@@ -40,7 +41,7 @@ class AbstractNetwork(nn.Module):
         
     def load(self, ckpt):
         if ckpt is not None:
-            state_dict = torch.load(ckpt)
+            state_dict = torch.load(ckpt, map_location=None if torch.cuda.is_available() else torch.device("cpu"))
             self.global_epoch = state_dict['global_epoch']
             self.global_step = state_dict['global_step']
             self.load_state_dict(state_dict['parameters'])
